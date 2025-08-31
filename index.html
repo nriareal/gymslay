@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💅✨ Slay Your Workout Bestie ✨💅</title>
+    <!-- Link to your new stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Chart.js scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💅✨ Slay Your Workout Bestie ✨💅</h1>
+            <p>Your main character fitness era starts NOW! 🌟</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="tab active" onclick="switchTab(event, 'setup')">🎯 Setup</button>
+            <button class="tab" onclick="switchTab(event, 'workout')">💪 Workout</button>
+            <button class="tab" onclick="switchTab(event, 'tracking')">📊 Progress</button>
+            <button class="tab" onclick="switchTab(event, 'stats')">✨ Stats</button>
+        </div>
+
+        <!-- Setup Tab -->
+        <div class="tab-content active" id="setup">
+            
+            <div class="form-section">
+                <div class="section-title">🗓️ Basic Vibes Check</div>
+                <div class="form-group">
+                    <label>How many days are we serving looks at the gym?</label>
+                    <select id="workoutDays">
+                        <option value="3">3 days - Chill queen energy</option>
+                        <option value="4">4 days - Getting serious</option>
+                        <option value="5">5 days - Main character mode</option>
+                        <option value="6">6 days - Beast mode activated</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Session length? (How long we're slaying)</label>
+                    <select id="sessionLength">
+                        <option value="45">45 mins - Sweet spot energy</option>
+                        <option value="60">60 mins - Standard slay session</option>
+                        <option value="75">75 mins - Extra spice</option>
+                        <option value="90">90 mins - Full dedication mode</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <div class="section-title">🏃‍♀️ Let's Get Sweaty: Cardio Warmup?</div>
+                 <div class="checkbox-grid">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="includeCardio" onchange="toggleCardioOptions()">
+                        <label for="includeCardio">Heck yes, let's warm up!</label>
+                    </div>
+                </div>
+                <div id="cardioOptions" class="hidden" style="margin-top: 20px;">
+                    <div class="form-group">
+                        <label>How long is the cardio tea?</label>
+                        <select id="cardioLength">
+                            <option value="5">5 mins - Quick hello</option>
+                            <option value="10">10 mins - The real deal</option>
+                            <option value="15">15 mins - Main event cardio</option>
+                            <option value="20">20 mins - Cardio queen</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>What's the machine vibe?</label>
+                        <select id="cardioMachine">
+                            <option value="treadmill">Treadmill</option>
+                            <option value="elliptical">Elliptical</option>
+                            <option value="bike">Stationary Bike</option>
+                            <option value="rower">Rowing Machine</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title">🤸‍♀️ The Weekly Split</div>
+                <p style="margin-bottom: 15px;">How are we splitting up the slay-sesh this week?</p>
+                <div class="radio-grid">
+                     <div class="radio-item">
+                        <input type="radio" id="splitFB" name="split" value="fullBody" checked>
+                        <label for="splitFB">🔥 Full Body</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="splitUL" name="split" value="upperLower">
+                        <label for="splitUL">💪 Upper / 🦵 Lower</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="splitPPL" name="split" value="pushPullLegs">
+                        <label for="splitPPL">🅿️ Push / Pull / Legs</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title">🏋️‍♀️ Spill The Tea: What Equipment You Got?</div>
+                <div class="equipment-grid">
+                    <div class="equipment-card" onclick="toggleEquipment(this, 'dumbbells')"><span class="emoji">🏋️‍♀️</span><div>Dumbbells</div></div>
+                    <div class="equipment-card" onclick="toggleEquipment(this, 'barbell')"><span class="emoji">🏋️</span><div>Barbell</div></div>
+                    <div class="equipment-card" onclick="toggleEquipment(this, 'machines')"><span class="emoji">⚙️</span><div>Machines</div></div>
+                    <div class="equipment-card" onclick="toggleEquipment(this, 'cable')"><span class="emoji">🔗</span><div>Cable Machine</div></div>
+                    <div class="equipment-card" onclick="toggleEquipment(this, 'kettlebell')"><span class="emoji">⚫</span><div>Kettlebells</div></div>
+                    <div class="equipment-card" onclick="toggleEquipment(this, 'bands')"><span class="emoji">🎗️</span><div>Resistance Bands</div></div>
+                    <div class="equipment-card selected" onclick="toggleEquipment(this, 'bodyweight')"><span class="emoji">🤸‍♀️</span><div>Bodyweight</div></div>
+                    <div class="equipment-card" onclick="toggleEquipment(this, 'cardio')"><span class="emoji">🏃‍♀️</span><div>Cardio Machines</div></div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <div class="section-title">🧘‍♀️ The After-Party: Abs & Flexibility?</div>
+                <div class="checkbox-grid">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="includeAbs">
+                        <label for="includeAbs">✨ Yes, core finisher!</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="includeFlexibility">
+                        <label for="includeFlexibility">🤸‍♀️ Yes, stretchy time!</label>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="generateWorkoutPlan()">✨ Create My 4-Week Iconic Plan ✨</button>
+        </div>
+
+        <!-- Workout Tab -->
+        <div class="tab-content" id="workout">
+            <h2>💪 Your Life-Changing Workout Plan</h2>
+            <button id="printButton" class="btn btn-accent hidden" onclick="printWorkoutPlan()">🖨️ Print Plan to PDF</button>
+            <div id="workoutPlan">
+                <p>Your plan will show up here once you fill out the setup tab, bestie! Go on, you got this!</p>
+            </div>
+        </div>
+
+        <!-- Tracking Tab -->
+        <div class="tab-content" id="tracking">
+            <h2>📊 Progress Tracking (We love to see the glow up!)</h2>
+            
+            <div class="form-section">
+                <div class="form-group">
+                    <label>Select Exercise to Track:</label>
+                    <select id="exerciseSelect">
+                        <option value="">Choose your exercise bestie...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Date:</label>
+                    <input type="date" id="dateInput">
+                </div>
+
+                <div id="logSetsContainer">
+                    <!-- Dynamic set rows will be added here -->
+                </div>
+
+                <button class="btn btn-accent" onclick="addSet()">+ Add Set</button>
+                <button class="btn btn-success" onclick="logProgress()">📝 Log This Iconic Session!</button>
+            </div>
+
+            <div class="progress-chart">
+                <h3>📈 Your Glow Up Gallery</h3>
+                 <div id="progressGraphsContainer" style="margin-top: 20px;">
+                    <p>Log some workouts to see your progress charts here!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div class="tab-content" id="stats">
+            <h2>✨ Your Fitness Stats (The main character energy is showing!)</h2>
+            <div class="stats-grid" id="statsGrid">
+                <!-- Stats will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Link to your new script files. Order matters! -->
+    <script src="database.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
