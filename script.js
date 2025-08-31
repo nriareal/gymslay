@@ -79,11 +79,10 @@ function generateWorkoutPlan() {
 
             // 3. Abs Finisher
             if (includeAbs) {
-                let allAbs = getExercisesByMuscles(['Abs'], 100, avoids); // Get all available abs exercises, respecting avoids
+                let allAbs = getExercisesByMuscles(['Abs', 'Core'], 100, avoids); 
                 let compoundAbs = allAbs.filter(ex => ex.type === 'compound').sort(() => 0.5 - Math.random());
                 let isolationAbs = allAbs.filter(ex => ex.type === 'isolation').sort(() => 0.5 - Math.random());
                 
-                // Prioritize 1 compound, then fill with isolations
                 const numCompoundAbs = Math.min(compoundAbs.length, 1);
                 const selectedAbs = compoundAbs.slice(0, numCompoundAbs);
                 const remainingAbsCount = 3 - selectedAbs.length;
@@ -113,7 +112,7 @@ function generateWorkoutPlan() {
     }
     
     document.getElementById('workoutPlan').innerHTML = planHTML;
-    document.getElementById('printButton').classList.remove('hidden'); // Show the print button
+    document.getElementById('printButton').classList.remove('hidden');
     switchTab({currentTarget: document.querySelector('.tab[onclick*="workout"]')}, 'workout');
 }
 
@@ -145,18 +144,9 @@ function getExercisesByMuscles(muscleGroups, count, avoids = new Set()) {
 }
 
 function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
-    const muscleGroups = {
-        'Push': ['Chest', 'Shoulders', 'Arms'],
-        'Pull': ['Back', 'Arms'],
-        'Legs': ['Legs'],
-        'Upper': ['Chest', 'Back', 'Shoulders', 'Arms'],
-        'Lower': ['Legs'],
-        'Full Body': ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms']
-    };
-
-    // --- NEW: Smarter, balanced logic for Full Body workouts ---
+    // --- NEW, MORE RELIABLE Full Body Logic ---
     if (dayType === 'Full Body') {
-        const numExercises = Math.max(5, Math.floor(workoutTime / 7));
+        const numExercises = Math.max(6, Math.floor(workoutTime / 7));
         const numLowerTarget = Math.floor(numExercises / 2);
         const numUpperTarget = numExercises - numLowerTarget;
 
@@ -171,84 +161,65 @@ function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
                     });
                 }
             });
-            return pool;
+            return pool.sort(() => 0.5 - Math.random()); // Shuffle the pool
         };
-        
-        // Create pools for major movement patterns
-        let pushPool = getPool(['Chest', 'Shoulders']);
-        let pullPool = getPool(['Back']);
-        let legPool = getPool(['Legs']);
-        let accessoryPool = getPool(['Arms', 'Calves', 'Abs']); // Smaller muscles
 
+        const upperBodyGroups = ['Chest', 'Back', 'Shoulders', 'Arms', 'Calisthenics'];
+        const lowerBodyGroups = ['Legs', 'Glutes'];
+        
+        let upperPool = getPool(upperBodyGroups);
+        let lowerPool = getPool(lowerBodyGroups);
+        
         let selectedExercises = [];
-        let usedExerciseNames = new Set();
+        let mustHavesUsed = new Set();
 
-        // 1. Handle Must-Haves first
-        mustHaves.forEach(mustHaveName => {
-            const allPools = [...pushPool, ...pullPool, ...legPool, ...accessoryPool];
-            const exercise = allPools.find(ex => ex.name === mustHaveName);
-            if(exercise && !usedExerciseNames.has(exercise.name)) {
-                selectedExercises.push(exercise);
-                usedExerciseNames.add(exercise.name);
-            }
+        // 1. Add must-haves and categorize them
+        mustHaves.forEach(name => {
+            let found = false;
+            const checkAndAdd = (pool, type) => {
+                const exercise = pool.find(ex => ex.name === name);
+                if (exercise) {
+                    selectedExercises.push(exercise);
+                    mustHavesUsed.add(name);
+                    // Remove from pool to avoid duplication
+                    pool.splice(pool.indexOf(exercise), 1);
+                    found = true;
+                }
+            };
+            checkAndAdd(lowerPool);
+            if (!found) checkAndAdd(upperPool);
         });
-
-        // Helper to get a random compound exercise from a pool
-        const getCompound = (pool) => {
-            const compounds = pool.filter(ex => ex.type === 'compound' && !usedExerciseNames.has(ex.name));
-            if (compounds.length > 0) {
-                 return compounds[Math.floor(Math.random() * compounds.length)];
-            }
-            return null;
-        }
-
-        // 2. Guarantee 1 major Push, 1 Pull, 1 Legs compound exercise
-        const corePush = getCompound(pushPool);
-        if (corePush) { selectedExercises.push(corePush); usedExerciseNames.add(corePush.name); }
         
-        const corePull = getCompound(pullPool);
-        if (corePull) { selectedExercises.push(corePull); usedExerciseNames.add(corePull.name); }
-        
-        const coreLegs = getCompound(legPool);
-        if (coreLegs) { selectedExercises.push(coreLegs); usedExerciseNames.add(coreLegs.name); }
+        let currentUpperCount = selectedExercises.filter(ex => upperPool.concat(getPool(upperBodyGroups)).some(uex => uex.name === ex.name)).length;
+        let currentLowerCount = selectedExercises.filter(ex => lowerPool.concat(getPool(lowerBodyGroups)).some(lex => lex.name === ex.name)).length;
 
-        // 3. Fill remaining spots while maintaining balance
-        let currentUpper = selectedExercises.filter(ex => legPool.indexOf(ex) === -1).length;
-        let currentLower = selectedExercises.filter(ex => legPool.indexOf(ex) > -1).length;
-        
-        const remainingPool = [...pushPool, ...pullPool, ...legPool, ...accessoryPool].filter(ex => !usedExerciseNames.has(ex.name)).sort(() => 0.5 - Math.random());
-
-        while(selectedExercises.length < numExercises && remainingPool.length > 0) {
-            let exerciseToAdd;
-            // Prioritize the group that is further from its target
-            if(currentLower < numLowerTarget) {
-                 exerciseToAdd = remainingPool.find(ex => legPool.some(legEx => legEx.name === ex.name));
-                 if(exerciseToAdd) currentLower++;
-            } else if (currentUpper < numUpperTarget) {
-                 exerciseToAdd = remainingPool.find(ex => !legPool.some(legEx => legEx.name === ex.name));
-                 if(exerciseToAdd) currentUpper++;
-            } else {
-                // If targets are met, just grab the next available
-                exerciseToAdd = remainingPool[0];
+        // 2. Fill remaining slots to meet targets
+        const fillFromPool = (pool, target, current) => {
+            let needed = target - current;
+            let added = 0;
+            for (let i = 0; i < pool.length && added < needed; i++) {
+                if (!mustHavesUsed.has(pool[i].name)) {
+                    selectedExercises.push(pool[i]);
+                    added++;
+                }
             }
+        };
 
-            if(exerciseToAdd) {
-                selectedExercises.push(exerciseToAdd);
-                usedExerciseNames.add(exerciseToAdd.name);
-                // Remove it from remaining pool
-                const index = remainingPool.findIndex(ex => ex.name === exerciseToAdd.name);
-                if (index > -1) remainingPool.splice(index, 1);
-            } else {
-                // No more suitable exercises to add
-                break;
-            }
-        }
+        fillFromPool(lowerPool, numLowerTarget, currentLowerCount);
+        fillFromPool(upperPool, numUpperTarget, currentUpperCount);
         
         if (selectedExercises.length === 0) return `<p>Couldn't find any exercises for this setup! Try changing your preferences or selecting more equipment.</p>`;
         return generateSectionHTML(`Main Lift (Sets: 3-4 | Reps: 8-12)`, 'tag-main', selectedExercises);
     }
 
-    // Original logic for other split types
+    // Original logic for other split types (remains unchanged)
+    const muscleGroups = {
+        'Push': ['Chest', 'Shoulders', 'Arms', 'Calisthenics'],
+        'Pull': ['Back', 'Arms', 'Calisthenics'],
+        'Legs': ['Legs', 'Glutes'],
+        'Upper': ['Chest', 'Back', 'Shoulders', 'Arms', 'Calisthenics'],
+        'Lower': ['Legs', 'Glutes'],
+    };
     let fullPool = [];
     muscleGroups[dayType].forEach(group => {
         if(exerciseDB[group]) {
@@ -282,7 +253,7 @@ function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
 }
 
 
-// --- NEW, RELIABLE PRINT FUNCTION ---
+// --- RELIABLE PRINT FUNCTION ---
 function printWorkoutPlan() {
     const planContent = document.getElementById('workoutPlan');
     if (!planContent || planContent.children.length === 0) {
@@ -333,10 +304,8 @@ function printWorkoutPlan() {
                      const nextContent = sectionTitle.nextElementSibling;
 
                      if (sectionTitle.textContent === 'Stretchy Cool-down Ideas' && nextContent && nextContent.classList.contains('exercise-item')) {
-                        // For the cool-down, we grab the detailed HTML directly
                         exercisesHTML += `<li>${nextContent.innerHTML}</li>`;
                      } else {
-                        // For regular exercise lists
                         let exerciseList = '<ul>';
                         let currentExerciseItem = nextContent;
                         while(currentExerciseItem && currentExerciseItem.classList.contains('exercise-item')){
@@ -449,7 +418,7 @@ function logProgress() {
 
 function renderAllCharts() {
     const container = document.getElementById('progressGraphsContainer');
-    container.innerHTML = ''; // Clear previous charts
+    container.innerHTML = ''; 
 
     const exercisesWithData = Object.keys(progressData).filter(ex => progressData[ex] && progressData[ex].length > 0);
     
@@ -574,6 +543,6 @@ function populateExercisePreferenceDropdowns() {
 window.onload = function() {
     document.getElementById('dateInput').valueAsDate = new Date();
     populateExerciseDropdown();
-    populateExercisePreferenceDropdowns(); // <-- New function call
+    populateExercisePreferenceDropdowns();
     renderAllCharts();
 };
