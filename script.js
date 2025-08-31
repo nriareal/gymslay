@@ -146,14 +146,65 @@ function getExercisesByMuscles(muscleGroups, count, avoids = new Set()) {
 
 function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
     const muscleGroups = {
-        'Push': ['Chest', 'Shoulders', 'Arms'], // Triceps focus
-        'Pull': ['Back', 'Arms'], // Biceps focus
+        'Push': ['Chest', 'Shoulders', 'Arms'],
+        'Pull': ['Back', 'Arms'],
         'Legs': ['Legs'],
         'Upper': ['Chest', 'Back', 'Shoulders', 'Arms'],
         'Lower': ['Legs'],
-        'Full Body': ['Chest', 'Back', 'Legs', 'Shoulders']
+        'Full Body': ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms']
     };
 
+    // Special balanced logic for Full Body workouts
+    if (dayType === 'Full Body') {
+        const numExercises = Math.max(5, Math.floor(workoutTime / 7));
+        const numLowerTarget = Math.floor(numExercises / 2);
+        const numUpperTarget = numExercises - numLowerTarget;
+
+        const getPool = (groups) => {
+            let pool = [];
+            groups.forEach(group => {
+                if(exerciseDB[group]) {
+                    exerciseDB[group].forEach(ex => {
+                        if (!avoids.has(ex.name) && ex.equipment.some(eq => selectedEquipment.has(eq))) {
+                            pool.push(ex);
+                        }
+                    });
+                }
+            });
+            return pool;
+        };
+
+        let upperPool = getPool(['Chest', 'Back', 'Shoulders', 'Arms']);
+        let lowerPool = getPool(['Legs']);
+        
+        const mustHaveUpper = upperPool.filter(ex => mustHaves.includes(ex.name));
+        const mustHaveLower = lowerPool.filter(ex => mustHaves.includes(ex.name));
+        const mustHaveNames = new Set(mustHaveUpper.map(ex => ex.name).concat(mustHaveLower.map(ex => ex.name)));
+
+        let randomUpperPool = upperPool.filter(ex => !mustHaveNames.has(ex.name));
+        let randomLowerPool = lowerPool.filter(ex => !mustHaveNames.has(ex.name));
+
+        const numUpperNeeded = Math.max(0, numUpperTarget - mustHaveUpper.length);
+        const numLowerNeeded = Math.max(0, numLowerTarget - mustHaveLower.length);
+
+        const selectRandom = (pool, count) => {
+            const compounds = pool.filter(ex => ex.type === 'compound').sort(() => 0.5 - Math.random());
+            const isolations = pool.filter(ex => ex.type === 'isolation').sort(() => 0.5 - Math.random());
+            const numCompoundsToPick = Math.min(compounds.length, Math.ceil(count * 0.6));
+            const numIsolationsToPick = Math.min(isolations.length, count - numCompoundsToPick);
+            return compounds.slice(0, numCompoundsToPick).concat(isolations.slice(0, numIsolationsToPick));
+        };
+
+        const randomUpper = selectRandom(randomUpperPool, numUpperNeeded);
+        const randomLower = selectRandom(randomLowerPool, numLowerNeeded);
+        
+        const selectedExercises = mustHaveLower.concat(randomLower, mustHaveUpper, randomUpper);
+
+        if (selectedExercises.length === 0) return `<p>Couldn't find any exercises for this setup! Try changing your preferences or selecting more equipment.</p>`;
+        return generateSectionHTML(`Main Lift (Sets: 3-4 | Reps: 8-12)`, 'tag-main', selectedExercises);
+    }
+
+    // Original logic for other split types
     let fullPool = [];
     muscleGroups[dayType].forEach(group => {
         if(exerciseDB[group]) {
@@ -165,14 +216,9 @@ function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
         }
     });
 
-    // 1. Filter out avoided exercises
     let availableExercises = fullPool.filter(ex => !avoids.has(ex.name));
-
-    // 2. Select must-haves for this day
     const dayMustHaves = availableExercises.filter(ex => mustHaves.includes(ex.name));
     const mustHaveNames = new Set(dayMustHaves.map(ex => ex.name));
-
-    // 3. Create pool of remaining exercises
     const remainingExercises = availableExercises.filter(ex => !mustHaveNames.has(ex.name));
     
     const compounds = remainingExercises.filter(ex => ex.type === 'compound').sort(() => 0.5 - Math.random());
@@ -185,11 +231,9 @@ function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
     const numIsolations = Math.min(isolations.length, Math.max(0, numRandomNeeded - numCompounds));
     
     const randomSelection = compounds.slice(0, numCompounds).concat(isolations.slice(0, numIsolations));
-    
     const selectedExercises = dayMustHaves.concat(randomSelection);
 
     if (selectedExercises.length === 0) return `<p>Couldn't find any exercises for this setup! Try changing your preferences or selecting more equipment.</p>`;
-
     return generateSectionHTML(`Main Lift (Sets: 3-4 | Reps: 8-12)`, 'tag-main', selectedExercises);
 }
 
