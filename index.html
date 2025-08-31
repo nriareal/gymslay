@@ -6,6 +6,7 @@
     <title>💅✨ Slay Your Workout Bestie ✨💅</title>
     <!-- Link to your new stylesheet -->
     <link rel="stylesheet" href="styles.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     
     <!-- Chart.js scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -46,6 +47,14 @@
                         <option value="60">60 mins - Standard slay session</option>
                         <option value="75">75 mins - Extra spice</option>
                         <option value="90">90 mins - Full dedication mode</option>
+                    </select>
+                </div>
+                 <div class="form-group">
+                    <label>What's your fitness level, bestie?</label>
+                    <select id="fitnessLevel">
+                        <option value="beginner">Beginner - Just starting this journey!</option>
+                        <option value="intermediate" selected>Intermediate - I know my way around</option>
+                        <option value="advanced">Advanced - Basically a pro</option>
                     </select>
                 </div>
             </div>
@@ -98,6 +107,20 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="form-section">
+                <div class="section-title">💖 Exercise Preferences</div>
+                <div class="form-group">
+                    <label for="mustHaveExercises">Must-Have Exercises (ones you love!)</label>
+                    <select id="mustHaveExercises" multiple="multiple" style="width: 100%;">
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="avoidExercises">Exercises to Avoid (the ones that aren't the vibe)</label>
+                    <select id="avoidExercises" multiple="multiple" style="width: 100%;">
+                    </select>
+                </div>
+            </div>
 
             <div class="form-section">
                 <div class="section-title">🏋️‍♀️ Spill The Tea: What Equipment You Got?</div>
@@ -113,19 +136,6 @@
                 </div>
             </div>
             
-            <div class="form-section">
-                <div class="section-title">✨ Exercise Preferences ✨</div>
-                <p style="margin-bottom: 15px;">Got any faves or any you'd rather skip? Let me know!</p>
-                <div class="form-group">
-                    <label for="mustHaveExercises">Must-Have Exercises (Hold Ctrl/Cmd to select multiple)</label>
-                    <select id="mustHaveExercises" multiple style="height: 150px; padding: 10px;"></select>
-                </div>
-                <div class="form-group">
-                    <label for="avoidExercises">Exercises to Avoid (Hold Ctrl/Cmd to select multiple)</label>
-                    <select id="avoidExercises" multiple style="height: 150px; padding: 10px;"></select>
-                </div>
-            </div>
-
             <div class="form-section">
                 <div class="section-title">🧘‍♀️ The After-Party: Abs & Flexibility?</div>
                 <div class="checkbox-grid">
@@ -146,9 +156,9 @@
 
         <!-- Workout Tab -->
         <div class="tab-content" id="workout">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                 <h2>💪 Your Life-Changing Workout Plan</h2>
-                 <button id="printButton" class="btn btn-accent hidden" onclick="printWorkoutPlan()">🖨️ Print Plan to PDF</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>💪 Your Life-Changing Workout Plan</h2>
+                <button id="printButton" class="btn btn-accent hidden" onclick="printWorkoutPlan()">🖨️ Print to PDF</button>
             </div>
             <div id="workoutPlan">
                 <p>Your plan will show up here once you fill out the setup tab, bestie! Go on, you got this!</p>
@@ -197,7 +207,9 @@
         </div>
     </div>
 
-    <!-- Link to your new script files. Order matters! -->
+    <!-- Link to scripts. Order matters! -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="database.js"></script>
     <script src="script.js"></script>
 </body>
