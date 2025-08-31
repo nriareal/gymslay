@@ -154,7 +154,7 @@ function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
         'Full Body': ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms']
     };
 
-    // Special balanced logic for Full Body workouts
+    // --- NEW: Smarter, balanced logic for Full Body workouts ---
     if (dayType === 'Full Body') {
         const numExercises = Math.max(5, Math.floor(workoutTime / 7));
         const numLowerTarget = Math.floor(numExercises / 2);
@@ -163,7 +163,7 @@ function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
         const getPool = (groups) => {
             let pool = [];
             groups.forEach(group => {
-                if(exerciseDB[group]) {
+                if (exerciseDB[group]) {
                     exerciseDB[group].forEach(ex => {
                         if (!avoids.has(ex.name) && ex.equipment.some(eq => selectedEquipment.has(eq))) {
                             pool.push(ex);
@@ -173,33 +173,77 @@ function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
             });
             return pool;
         };
-
-        let upperPool = getPool(['Chest', 'Back', 'Shoulders', 'Arms']);
-        let lowerPool = getPool(['Legs']);
         
-        const mustHaveUpper = upperPool.filter(ex => mustHaves.includes(ex.name));
-        const mustHaveLower = lowerPool.filter(ex => mustHaves.includes(ex.name));
-        const mustHaveNames = new Set(mustHaveUpper.map(ex => ex.name).concat(mustHaveLower.map(ex => ex.name)));
+        // Create pools for major movement patterns
+        let pushPool = getPool(['Chest', 'Shoulders']);
+        let pullPool = getPool(['Back']);
+        let legPool = getPool(['Legs']);
+        let accessoryPool = getPool(['Arms', 'Calves', 'Abs']); // Smaller muscles
 
-        let randomUpperPool = upperPool.filter(ex => !mustHaveNames.has(ex.name));
-        let randomLowerPool = lowerPool.filter(ex => !mustHaveNames.has(ex.name));
+        let selectedExercises = [];
+        let usedExerciseNames = new Set();
 
-        const numUpperNeeded = Math.max(0, numUpperTarget - mustHaveUpper.length);
-        const numLowerNeeded = Math.max(0, numLowerTarget - mustHaveLower.length);
+        // 1. Handle Must-Haves first
+        mustHaves.forEach(mustHaveName => {
+            const allPools = [...pushPool, ...pullPool, ...legPool, ...accessoryPool];
+            const exercise = allPools.find(ex => ex.name === mustHaveName);
+            if(exercise && !usedExerciseNames.has(exercise.name)) {
+                selectedExercises.push(exercise);
+                usedExerciseNames.add(exercise.name);
+            }
+        });
 
-        const selectRandom = (pool, count) => {
-            const compounds = pool.filter(ex => ex.type === 'compound').sort(() => 0.5 - Math.random());
-            const isolations = pool.filter(ex => ex.type === 'isolation').sort(() => 0.5 - Math.random());
-            const numCompoundsToPick = Math.min(compounds.length, Math.ceil(count * 0.6));
-            const numIsolationsToPick = Math.min(isolations.length, count - numCompoundsToPick);
-            return compounds.slice(0, numCompoundsToPick).concat(isolations.slice(0, numIsolationsToPick));
-        };
+        // Helper to get a random compound exercise from a pool
+        const getCompound = (pool) => {
+            const compounds = pool.filter(ex => ex.type === 'compound' && !usedExerciseNames.has(ex.name));
+            if (compounds.length > 0) {
+                 return compounds[Math.floor(Math.random() * compounds.length)];
+            }
+            return null;
+        }
 
-        const randomUpper = selectRandom(randomUpperPool, numUpperNeeded);
-        const randomLower = selectRandom(randomLowerPool, numLowerNeeded);
+        // 2. Guarantee 1 major Push, 1 Pull, 1 Legs compound exercise
+        const corePush = getCompound(pushPool);
+        if (corePush) { selectedExercises.push(corePush); usedExerciseNames.add(corePush.name); }
         
-        const selectedExercises = mustHaveLower.concat(randomLower, mustHaveUpper, randomUpper);
+        const corePull = getCompound(pullPool);
+        if (corePull) { selectedExercises.push(corePull); usedExerciseNames.add(corePull.name); }
+        
+        const coreLegs = getCompound(legPool);
+        if (coreLegs) { selectedExercises.push(coreLegs); usedExerciseNames.add(coreLegs.name); }
 
+        // 3. Fill remaining spots while maintaining balance
+        let currentUpper = selectedExercises.filter(ex => legPool.indexOf(ex) === -1).length;
+        let currentLower = selectedExercises.filter(ex => legPool.indexOf(ex) > -1).length;
+        
+        const remainingPool = [...pushPool, ...pullPool, ...legPool, ...accessoryPool].filter(ex => !usedExerciseNames.has(ex.name)).sort(() => 0.5 - Math.random());
+
+        while(selectedExercises.length < numExercises && remainingPool.length > 0) {
+            let exerciseToAdd;
+            // Prioritize the group that is further from its target
+            if(currentLower < numLowerTarget) {
+                 exerciseToAdd = remainingPool.find(ex => legPool.some(legEx => legEx.name === ex.name));
+                 if(exerciseToAdd) currentLower++;
+            } else if (currentUpper < numUpperTarget) {
+                 exerciseToAdd = remainingPool.find(ex => !legPool.some(legEx => legEx.name === ex.name));
+                 if(exerciseToAdd) currentUpper++;
+            } else {
+                // If targets are met, just grab the next available
+                exerciseToAdd = remainingPool[0];
+            }
+
+            if(exerciseToAdd) {
+                selectedExercises.push(exerciseToAdd);
+                usedExerciseNames.add(exerciseToAdd.name);
+                // Remove it from remaining pool
+                const index = remainingPool.findIndex(ex => ex.name === exerciseToAdd.name);
+                if (index > -1) remainingPool.splice(index, 1);
+            } else {
+                // No more suitable exercises to add
+                break;
+            }
+        }
+        
         if (selectedExercises.length === 0) return `<p>Couldn't find any exercises for this setup! Try changing your preferences or selecting more equipment.</p>`;
         return generateSectionHTML(`Main Lift (Sets: 3-4 | Reps: 8-12)`, 'tag-main', selectedExercises);
     }
@@ -236,6 +280,7 @@ function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
     if (selectedExercises.length === 0) return `<p>Couldn't find any exercises for this setup! Try changing your preferences or selecting more equipment.</p>`;
     return generateSectionHTML(`Main Lift (Sets: 3-4 | Reps: 8-12)`, 'tag-main', selectedExercises);
 }
+
 
 // --- NEW, RELIABLE PRINT FUNCTION ---
 function printWorkoutPlan() {
