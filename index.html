@@ -114,6 +114,19 @@
             </div>
             
             <div class="form-section">
+                <div class="section-title">✨ Exercise Preferences ✨</div>
+                <p style="margin-bottom: 15px;">Got any faves or any you'd rather skip? Let me know!</p>
+                <div class="form-group">
+                    <label for="mustHaveExercises">Must-Have Exercises (Hold Ctrl/Cmd to select multiple)</label>
+                    <select id="mustHaveExercises" multiple style="height: 150px; padding: 10px;"></select>
+                </div>
+                <div class="form-group">
+                    <label for="avoidExercises">Exercises to Avoid (Hold Ctrl/Cmd to select multiple)</label>
+                    <select id="avoidExercises" multiple style="height: 150px; padding: 10px;"></select>
+                </div>
+            </div>
+
+            <div class="form-section">
                 <div class="section-title">🧘‍♀️ The After-Party: Abs & Flexibility?</div>
                 <div class="checkbox-grid">
                     <div class="checkbox-item">
@@ -127,13 +140,16 @@
                 </div>
             </div>
 
+
             <button class="btn btn-primary" onclick="generateWorkoutPlan()">✨ Create My 4-Week Iconic Plan ✨</button>
         </div>
 
         <!-- Workout Tab -->
         <div class="tab-content" id="workout">
-            <h2>💪 Your Life-Changing Workout Plan</h2>
-            <button id="printButton" class="btn btn-accent hidden" onclick="printWorkoutPlan()">🖨️ Print Plan to PDF</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                 <h2>💪 Your Life-Changing Workout Plan</h2>
+                 <button id="printButton" class="btn btn-accent hidden" onclick="printWorkoutPlan()">🖨️ Print Plan to PDF</button>
+            </div>
             <div id="workoutPlan">
                 <p>Your plan will show up here once you fill out the setup tab, bestie! Go on, you got this!</p>
             </div>

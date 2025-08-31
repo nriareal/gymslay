@@ -50,6 +50,9 @@ function generateWorkoutPlan() {
     const includeAbs = document.getElementById('includeAbs').checked;
     const includeFlexibility = document.getElementById('includeFlexibility').checked;
     
+    const mustHaves = Array.from(document.getElementById('mustHaveExercises').selectedOptions).map(opt => opt.value);
+    const avoids = new Set(Array.from(document.getElementById('avoidExercises').selectedOptions).map(opt => opt.value));
+
     let planHTML = '';
     const dayNames = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6'];
 
@@ -72,12 +75,23 @@ function generateWorkoutPlan() {
 
             // 2. Main Workout
             const workoutTime = sessionLength - (includeCardio ? cardioLength : 0) - (includeAbs ? 10 : 0) - (includeFlexibility ? 5 : 0);
-            planHTML += generateDayWorkout(dayType, workoutTime);
+            planHTML += generateDayWorkout(dayType, workoutTime, mustHaves, avoids);
 
             // 3. Abs Finisher
             if (includeAbs) {
-                const abExercises = getExercisesByMuscles(['Abs'], 3);
-                planHTML += generateSectionHTML('Abs Finisher (2-3 rounds)', 'tag-abs', abExercises);
+                let allAbs = getExercisesByMuscles(['Abs'], 100, avoids); // Get all available abs exercises, respecting avoids
+                let compoundAbs = allAbs.filter(ex => ex.type === 'compound').sort(() => 0.5 - Math.random());
+                let isolationAbs = allAbs.filter(ex => ex.type === 'isolation').sort(() => 0.5 - Math.random());
+                
+                // Prioritize 1 compound, then fill with isolations
+                const numCompoundAbs = Math.min(compoundAbs.length, 1);
+                const selectedAbs = compoundAbs.slice(0, numCompoundAbs);
+                const remainingAbsCount = 3 - selectedAbs.length;
+                if(remainingAbsCount > 0) {
+                    selectedAbs.push(...isolationAbs.slice(0, remainingAbsCount));
+                }
+                
+                planHTML += generateSectionHTML('Abs Finisher (2-3 rounds)', 'tag-abs', selectedAbs);
             }
 
             // 4. Flexibility
@@ -116,12 +130,12 @@ function generateSectionHTML(title, tagClass, exercises) {
     return html;
 }
 
-function getExercisesByMuscles(muscleGroups, count) {
+function getExercisesByMuscles(muscleGroups, count, avoids = new Set()) {
     let availableExercises = [];
      Object.entries(exerciseDB).forEach(([group, exercises]) => {
         if (muscleGroups.includes(group)) {
             exercises.forEach(ex => {
-                if (ex.equipment.some(eq => selectedEquipment.has(eq))) {
+                if (!avoids.has(ex.name) && ex.equipment.some(eq => selectedEquipment.has(eq))) {
                     availableExercises.push(ex);
                 }
             });
@@ -130,7 +144,7 @@ function getExercisesByMuscles(muscleGroups, count) {
     return [...availableExercises].sort(() => 0.5 - Math.random()).slice(0, count);
 }
 
-function generateDayWorkout(dayType, workoutTime) {
+function generateDayWorkout(dayType, workoutTime, mustHaves, avoids) {
     const muscleGroups = {
         'Push': ['Chest', 'Shoulders', 'Arms'], // Triceps focus
         'Pull': ['Back', 'Arms'], // Biceps focus
@@ -140,27 +154,41 @@ function generateDayWorkout(dayType, workoutTime) {
         'Full Body': ['Chest', 'Back', 'Legs', 'Shoulders']
     };
 
-    let availableExercises = [];
+    let fullPool = [];
     muscleGroups[dayType].forEach(group => {
         if(exerciseDB[group]) {
             exerciseDB[group].forEach(ex => {
                 if (ex.equipment.some(eq => selectedEquipment.has(eq))) {
-                    availableExercises.push(ex);
+                    fullPool.push(ex);
                 }
             });
         }
     });
-    
-    const compounds = availableExercises.filter(ex => ex.type === 'compound').sort(() => 0.5 - Math.random());
-    const isolations = availableExercises.filter(ex => ex.type === 'isolation').sort(() => 0.5 - Math.random());
-    
-    const numExercises = Math.max(5, Math.floor(workoutTime / 7)); // Approx 7 mins per exercise
-    const numCompounds = Math.min(compounds.length, Math.max(2, Math.ceil(numExercises * 0.4)));
-    const numIsolations = Math.min(isolations.length, Math.max(4, numExercises - numCompounds));
-    
-    const selectedExercises = compounds.slice(0, numCompounds).concat(isolations.slice(0, numIsolations));
 
-    if (selectedExercises.length === 0) return `<p>Couldn't find any exercises for this setup! Try selecting more equipment.</p>`;
+    // 1. Filter out avoided exercises
+    let availableExercises = fullPool.filter(ex => !avoids.has(ex.name));
+
+    // 2. Select must-haves for this day
+    const dayMustHaves = availableExercises.filter(ex => mustHaves.includes(ex.name));
+    const mustHaveNames = new Set(dayMustHaves.map(ex => ex.name));
+
+    // 3. Create pool of remaining exercises
+    const remainingExercises = availableExercises.filter(ex => !mustHaveNames.has(ex.name));
+    
+    const compounds = remainingExercises.filter(ex => ex.type === 'compound').sort(() => 0.5 - Math.random());
+    const isolations = remainingExercises.filter(ex => ex.type === 'isolation').sort(() => 0.5 - Math.random());
+    
+    const numExercises = Math.max(5, Math.floor(workoutTime / 7));
+    const numRandomNeeded = Math.max(0, numExercises - dayMustHaves.length);
+    
+    const numCompounds = Math.min(compounds.length, Math.max(0, Math.ceil(numRandomNeeded * 0.4)));
+    const numIsolations = Math.min(isolations.length, Math.max(0, numRandomNeeded - numCompounds));
+    
+    const randomSelection = compounds.slice(0, numCompounds).concat(isolations.slice(0, numIsolations));
+    
+    const selectedExercises = dayMustHaves.concat(randomSelection);
+
+    if (selectedExercises.length === 0) return `<p>Couldn't find any exercises for this setup! Try changing your preferences or selecting more equipment.</p>`;
 
     return generateSectionHTML(`Main Lift (Sets: 3-4 | Reps: 8-12)`, 'tag-main', selectedExercises);
 }
@@ -186,10 +214,11 @@ function printWorkoutPlan() {
             .week-title { font-size: 1.6em; font-weight: bold; margin-top: 40px; padding-bottom: 10px; border-bottom: 2px solid #000; page-break-before: always; }
             .week-title:first-of-type { page-break-before: auto; }
             .day-row { page-break-inside: avoid; }
-            ul { margin: 0; padding-left: 20px; }
+            ul { margin: 0; padding-left: 20px; list-style-position: inside; }
             ul ul { margin-top: 5px; }
             li { margin-bottom: 5px; }
             li strong { font-weight: bold; }
+            p { margin-top: 0; }
         </style>
     `);
     
@@ -212,16 +241,24 @@ function printWorkoutPlan() {
                 
                 nextElement.querySelectorAll('h4').forEach(sectionTitle => {
                      exercisesHTML += `<li><strong>${sectionTitle.textContent}</strong></li>`;
-                     let exerciseList = '<ul>';
-                     let nextExercise = sectionTitle.nextElementSibling;
-                     while(nextExercise && nextExercise.classList.contains('exercise-item')){
-                        const exerciseName = nextExercise.querySelector('strong').textContent;
-                        const exerciseDetails = nextExercise.querySelector('small') ? `(${nextExercise.querySelector('small').textContent})` : '';
-                        exerciseList += `<li>${exerciseName} ${exerciseDetails}</li>`;
-                        nextExercise = nextExercise.nextElementSibling;
+                     const nextContent = sectionTitle.nextElementSibling;
+
+                     if (sectionTitle.textContent === 'Stretchy Cool-down Ideas' && nextContent && nextContent.classList.contains('exercise-item')) {
+                        // For the cool-down, we grab the detailed HTML directly
+                        exercisesHTML += `<li>${nextContent.innerHTML}</li>`;
+                     } else {
+                        // For regular exercise lists
+                        let exerciseList = '<ul>';
+                        let currentExerciseItem = nextContent;
+                        while(currentExerciseItem && currentExerciseItem.classList.contains('exercise-item')){
+                            const exerciseName = currentExerciseItem.querySelector('strong').textContent;
+                            const exerciseDetails = currentExerciseItem.querySelector('small') ? `(${currentExerciseItem.querySelector('small').textContent})` : '';
+                            exerciseList += `<li>${exerciseName} ${exerciseDetails}</li>`;
+                            currentExerciseItem = currentExerciseItem.nextElementSibling;
+                        }
+                        exerciseList += '</ul>';
+                        exercisesHTML += exerciseList;
                      }
-                     exerciseList += '</ul>';
-                     exercisesHTML += exerciseList;
                 });
                 
                 exercisesHTML += '</ul>';
@@ -422,10 +459,32 @@ function updateStats() {
     `;
 }
 
+// --- Populates new preference dropdowns ---
+function populateExercisePreferenceDropdowns() {
+    const mustHaveSelect = document.getElementById('mustHaveExercises');
+    const avoidSelect = document.getElementById('avoidExercises');
+
+    const allExercises = new Set();
+    Object.values(exerciseDB).flat().forEach(ex => allExercises.add(ex.name));
+
+    [...allExercises].sort().forEach(name => {
+        const option1 = document.createElement('option');
+        option1.value = name;
+        option1.textContent = name;
+        mustHaveSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = name;
+        option2.textContent = name;
+        avoidSelect.appendChild(option2);
+    });
+}
+
 
 // --- INITIALIZATION ---
 window.onload = function() {
     document.getElementById('dateInput').valueAsDate = new Date();
     populateExerciseDropdown();
+    populateExercisePreferenceDropdowns(); // <-- New function call
     renderAllCharts();
 };
